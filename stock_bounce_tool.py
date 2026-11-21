@@ -7,7 +7,7 @@ from datetime import datetime
 st.set_page_config(page_title="Daily Stock Bounce Comparator", layout="wide")
 
 st.title("📈 Daily Stock Bounce Comparator")
-st.caption("News Links • Earnings • Short Interest • Options • Sector • 1-Min Volume • Technicals")
+st.caption("Yahoo News • Google News • Earnings • Short Interest • Options • Sector • 1-Min Volume • Technicals")
 
 st.sidebar.header("Settings")
 tickers_input = st.sidebar.text_input(
@@ -67,14 +67,29 @@ def get_extra_data(ticker):
         stock = yf.Ticker(ticker)
         info = stock.info
         
+        # Yahoo News
+        yahoo_news = "No recent news"
+        try:
+            news = stock.news[:2] if hasattr(stock, 'news') and stock.news else []
+            if news:
+                titles = [n.get('title', '')[:70] for n in news if n.get('title')]
+                if titles:
+                    yahoo_news = " | ".join(titles)
+        except:
+            pass
+        
+        # Google News link
         news_link = f"https://www.google.com/search?q={ticker}+stock+news&tbm=nws"
         
+        # Earnings
         earnings = info.get("earningsTimestamp") or info.get("earningsDate")
         earnings_date = datetime.fromtimestamp(earnings).strftime("%Y-%m-%d") if earnings else "N/A"
         
+        # Short interest
         short_pct = info.get("shortPercentOfFloat")
         short_interest = f"{short_pct*100:.1f}%" if short_pct else "N/A"
         
+        # Options / Put-Call
         try:
             options = stock.option_chain()
             calls = options.calls['volume'].sum() if not options.calls.empty else 0
@@ -83,9 +98,11 @@ def get_extra_data(ticker):
         except:
             pc_ratio = "N/A"
         
+        # Sector
         sector = info.get("sector", "N/A")
         
         return {
+            "Yahoo News": yahoo_news,
             "News Link": news_link,
             "Earnings": earnings_date,
             "Short Interest": short_interest,
@@ -94,6 +111,7 @@ def get_extra_data(ticker):
         }
     except:
         return {
+            "Yahoo News": "N/A",
             "News Link": f"https://www.google.com/search?q={ticker}+stock+news&tbm=nws",
             "Earnings": "N/A",
             "Short Interest": "N/A",
@@ -170,6 +188,7 @@ def get_stock_data(ticker):
             "VWAP (10D)": round(vwap, 2),
             "SMA 20": round(sma_20, 2),
             "SMA 50": round(sma_50, 2),
+            "Yahoo News": extra["Yahoo News"],
             "News Link": extra["News Link"],
             "Earnings": extra["Earnings"],
             "Short Interest": extra["Short Interest"],
@@ -195,13 +214,14 @@ if analyze:
         
         st.subheader("📰 News & Fundamentals")
         for _, row in df.iterrows():
-            cols = st.columns([1, 2, 1.5, 1.5, 1.5, 1.5])
+            cols = st.columns([1, 3, 2, 1.5, 1.5, 1.5, 1.5])
             cols[0].write(f"**{row['Ticker']}**")
-            cols[1].markdown(f"[Google News]({row['News Link']})")
-            cols[2].write(row['Earnings'])
-            cols[3].write(row['Short Interest'])
-            cols[4].write(row['Put/Call Ratio'])
-            cols[5].write(row['Sector'])
+            cols[1].write(row['Yahoo News'])
+            cols[2].markdown(f"[Google News]({row['News Link']})")
+            cols[3].write(row['Earnings'])
+            cols[4].write(row['Short Interest'])
+            cols[5].write(row['Put/Call Ratio'])
+            cols[6].write(row['Sector'])
         
         st.subheader("📊 1-Minute Volume")
         st.dataframe(df[["Ticker", "1Min Vol", "Rel 1Min Vol"]], use_container_width=True)
