@@ -72,7 +72,7 @@ def get_extra_data(ticker):
         try:
             news = stock.news[:2] if hasattr(stock, 'news') and stock.news else []
             if news:
-                titles = [n.get('title', '')[:70] for n in news if n.get('title')]
+                titles = [n.get('title', '')[:60] for n in news if n.get('title')]
                 if titles:
                     yahoo_news = " | ".join(titles)
         except:
@@ -103,18 +103,18 @@ def get_extra_data(ticker):
         
         return {
             "Yahoo News": yahoo_news,
-            "News Link": news_link,
-            "Earnings": earnings_date,
-            "Short Interest": short_interest,
+            "Google News": news_link,
+            "Earnings Date": earnings_date,
+            "Short Interest %": short_interest,
             "Put/Call Ratio": pc_ratio,
             "Sector": sector
         }
     except:
         return {
             "Yahoo News": "N/A",
-            "News Link": f"https://www.google.com/search?q={ticker}+stock+news&tbm=nws",
-            "Earnings": "N/A",
-            "Short Interest": "N/A",
+            "Google News": f"https://www.google.com/search?q={ticker}+stock+news&tbm=nws",
+            "Earnings Date": "N/A",
+            "Short Interest %": "N/A",
             "Put/Call Ratio": "N/A",
             "Sector": "N/A"
         }
@@ -189,9 +189,9 @@ def get_stock_data(ticker):
             "SMA 20": round(sma_20, 2),
             "SMA 50": round(sma_50, 2),
             "Yahoo News": extra["Yahoo News"],
-            "News Link": extra["News Link"],
-            "Earnings": extra["Earnings"],
-            "Short Interest": extra["Short Interest"],
+            "Google News": extra["Google News"],
+            "Earnings Date": extra["Earnings Date"],
+            "Short Interest %": extra["Short Interest %"],
             "Put/Call Ratio": extra["Put/Call Ratio"],
             "Sector": extra["Sector"]
         }
@@ -213,18 +213,15 @@ if analyze:
         df["Rank"] = df.index + 1
         
         st.subheader("📰 News & Fundamentals")
-        for _, row in df.iterrows():
-            cols = st.columns([1, 3, 2, 1.5, 1.5, 1.5, 1.5])
-            cols[0].write(f"**{row['Ticker']}**")
-            cols[1].write(row['Yahoo News'])
-            cols[2].markdown(f"[Google News]({row['News Link']})")
-            cols[3].write(row['Earnings'])
-            cols[4].write(row['Short Interest'])
-            cols[5].write(row['Put/Call Ratio'])
-            cols[6].write(row['Sector'])
+        st.dataframe(
+            df[["Ticker", "Yahoo News", "Google News", "Earnings Date", "Short Interest %", "Put/Call Ratio", "Sector"]],
+            use_container_width=True
+        )
+        st.caption("**Short Interest %** = % of shares sold short | **Put/Call Ratio** > 1 = more puts (bearish sentiment)")
         
         st.subheader("📊 1-Minute Volume")
         st.dataframe(df[["Ticker", "1Min Vol", "Rel 1Min Vol"]], use_container_width=True)
+        st.caption("**Rel 1Min Vol** = Latest 1-min volume ÷ average 1-min volume")
         
         st.subheader("📊 Main Comparison")
         st.dataframe(df[["Rank", "Ticker", "Price", "Day %", "Rel Volume", "5D %", "RSI", "Volatility %", "Bounce Score"]], use_container_width=True)
