@@ -1,4 +1,18 @@
-import streamlit as st
+st.subheader("📰 News & Fundamentals")
+        for _, row in df.iterrows():
+            col1, col2, col3, col4, col5, col6 = st.columns([1, 2, 1.5, 1.5, 1.5, 1.5])
+            with col1:
+                st.write(f"**{row['Ticker']}**")
+            with col2:
+                st.markdown(f"[Google News]({row['News Link']})")
+            with col3:
+                st.write(row['Earnings'])
+            with col4:
+                st.write(row['Short Interest'])
+            with col5:
+                st.write(row['Put/Call Ratio'])
+            with col6:
+                st.write(row['Sector'])Or, if you prefer to keep the table, just open the link manually by copying it for now.Would you like me to give you the full corrected file so you can replace everything at once?give me all code to replaceHere’s the full corrected code. Replace everything in stock_bounce_tool.py with this:Pythonimport streamlit as st
 import yfinance as yf
 import pandas as pd
 import numpy as np
@@ -67,18 +81,14 @@ def get_extra_data(ticker):
         stock = yf.Ticker(ticker)
         info = stock.info
         
-        # Google News link
         news_link = f"https://www.google.com/search?q={ticker}+stock+news&tbm=nws"
         
-        # Earnings
         earnings = info.get("earningsTimestamp") or info.get("earningsDate")
         earnings_date = datetime.fromtimestamp(earnings).strftime("%Y-%m-%d") if earnings else "N/A"
         
-        # Short interest
         short_pct = info.get("shortPercentOfFloat")
         short_interest = f"{short_pct*100:.1f}%" if short_pct else "N/A"
         
-        # Options / Put-Call
         try:
             options = stock.option_chain()
             calls = options.calls['volume'].sum() if not options.calls.empty else 0
@@ -87,7 +97,6 @@ def get_extra_data(ticker):
         except:
             pc_ratio = "N/A"
         
-        # Sector
         sector = info.get("sector", "N/A")
         
         return {
@@ -199,10 +208,14 @@ if analyze:
         df["Rank"] = df.index + 1
         
         st.subheader("📰 News & Fundamentals")
-        # Make News Link clickable
-        df_display = df.copy()
-        df_display["News"] = df_display["News Link"].apply(lambda x: f"[Google News]({x})")
-        st.dataframe(df_display[["Ticker", "News", "Earnings", "Short Interest", "Put/Call Ratio", "Sector"]], use_container_width=True)
+        for _, row in df.iterrows():
+            cols = st.columns([1, 2, 1.5, 1.5, 1.5, 1.5])
+            cols[0].write(f"**{row['Ticker']}**")
+            cols[1].markdown(f"[Google News]({row['News Link']})")
+            cols[2].write(row['Earnings'])
+            cols[3].write(row['Short Interest'])
+            cols[4].write(row['Put/Call Ratio'])
+            cols[5].write(row['Sector'])
         
         st.subheader("📊 1-Minute Volume")
         st.dataframe(df[["Ticker", "1Min Vol", "Rel 1Min Vol"]], use_container_width=True)
