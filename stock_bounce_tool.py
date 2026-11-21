@@ -1,18 +1,4 @@
-st.subheader("📰 News & Fundamentals")
-        for _, row in df.iterrows():
-            col1, col2, col3, col4, col5, col6 = st.columns([1, 2, 1.5, 1.5, 1.5, 1.5])
-            with col1:
-                st.write(f"**{row['Ticker']}**")
-            with col2:
-                st.markdown(f"[Google News]({row['News Link']})")
-            with col3:
-                st.write(row['Earnings'])
-            with col4:
-                st.write(row['Short Interest'])
-            with col5:
-                st.write(row['Put/Call Ratio'])
-            with col6:
-                st.write(row['Sector'])Or, if you prefer to keep the table, just open the link manually by copying it for now.Would you like me to give you the full corrected file so you can replace everything at once?give me all code to replaceHere’s the full corrected code. Replace everything in stock_bounce_tool.py with this:Pythonimport streamlit as st
+import streamlit as st
 import yfinance as yf
 import pandas as pd
 import numpy as np
