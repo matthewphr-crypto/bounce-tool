@@ -7,7 +7,7 @@ from datetime import datetime
 st.set_page_config(page_title="Daily Stock Bounce Comparator", layout="wide")
 
 st.title("📈 Daily Stock Bounce Comparator")
-st.caption("News • Earnings • Short Interest • Options • Sector • 1-Min Volume • Technicals")
+st.caption("News Links • Earnings • Short Interest • Options • Sector • 1-Min Volume • Technicals")
 
 st.sidebar.header("Settings")
 tickers_input = st.sidebar.text_input(
@@ -67,9 +67,8 @@ def get_extra_data(ticker):
         stock = yf.Ticker(ticker)
         info = stock.info
         
-        # News
-        news = stock.news[:3] if hasattr(stock, 'news') else []
-        headlines = " | ".join([n.get('title', '')[:60] for n in news]) if news else "No recent news"
+        # Google News link
+        news_link = f"https://www.google.com/search?q={ticker}+stock+news&tbm=nws"
         
         # Earnings
         earnings = info.get("earningsTimestamp") or info.get("earningsDate")
@@ -92,7 +91,7 @@ def get_extra_data(ticker):
         sector = info.get("sector", "N/A")
         
         return {
-            "News": headlines,
+            "News Link": news_link,
             "Earnings": earnings_date,
             "Short Interest": short_interest,
             "Put/Call Ratio": pc_ratio,
@@ -100,7 +99,7 @@ def get_extra_data(ticker):
         }
     except:
         return {
-            "News": "N/A",
+            "News Link": f"https://www.google.com/search?q={ticker}+stock+news&tbm=nws",
             "Earnings": "N/A",
             "Short Interest": "N/A",
             "Put/Call Ratio": "N/A",
@@ -154,8 +153,6 @@ def get_stock_data(ticker):
         
         sma_20 = hist['Close'].rolling(20).mean().iloc[-1]
         sma_50 = hist['Close'].rolling(50).mean().iloc[-1]
-        dist_sma20 = ((current_price - sma_20) / sma_20) * 100
-        dist_sma50 = ((current_price - sma_50) / sma_50) * 100
         
         return {
             "Ticker": ticker,
@@ -178,7 +175,7 @@ def get_stock_data(ticker):
             "VWAP (10D)": round(vwap, 2),
             "SMA 20": round(sma_20, 2),
             "SMA 50": round(sma_50, 2),
-            "News": extra["News"],
+            "News Link": extra["News Link"],
             "Earnings": extra["Earnings"],
             "Short Interest": extra["Short Interest"],
             "Put/Call Ratio": extra["Put/Call Ratio"],
@@ -202,7 +199,10 @@ if analyze:
         df["Rank"] = df.index + 1
         
         st.subheader("📰 News & Fundamentals")
-        st.dataframe(df[["Ticker", "News", "Earnings", "Short Interest", "Put/Call Ratio", "Sector"]], use_container_width=True)
+        # Make News Link clickable
+        df_display = df.copy()
+        df_display["News"] = df_display["News Link"].apply(lambda x: f"[Google News]({x})")
+        st.dataframe(df_display[["Ticker", "News", "Earnings", "Short Interest", "Put/Call Ratio", "Sector"]], use_container_width=True)
         
         st.subheader("📊 1-Minute Volume")
         st.dataframe(df[["Ticker", "1Min Vol", "Rel 1Min Vol"]], use_container_width=True)
