@@ -7,7 +7,7 @@ from datetime import datetime
 st.set_page_config(page_title="Daily Stock Bounce Comparator", layout="wide")
 
 st.title("📈 Daily Stock Bounce Comparator")
-st.caption("Pre-Market • Relative Volume • Bounce Score • RSI • Support/Resistance • Pivot Points • Volume Levels • Moving Averages")
+st.caption("1-Min Volume • Pre-Market • Relative Volume • Bounce Score • RSI • Support/Resistance • Pivot Points • Volume Levels • Moving Averages")
 
 st.sidebar.header("Settings")
 tickers_input = st.sidebar.text_input(
@@ -57,6 +57,25 @@ def get_premarket_data(ticker):
         pass
     return {"Pre-Market Price": None, "Pre-Market %": None}
 
+def get_1min_volume(ticker):
+    try:
+        # Get recent 1-minute data (last 1 day)
+        hist_1m = yf.Ticker(ticker).history(period="1d", interval="1m")
+        if hist_1m.empty:
+            return {"1Min Vol": None, "Avg 1Min Vol": None, "Rel 1Min Vol": None}
+        
+        latest_1m_vol = hist_1m['Volume'].iloc[-1]
+        avg_1m_vol = hist_1m['Volume'].mean()
+        rel_1m = latest_1m_vol / avg_1m_vol if avg_1m_vol > 0 else 0
+        
+        return {
+            "1Min Vol": int(latest_1m_vol),
+            "Avg 1Min Vol": int(avg_1m_vol),
+            "Rel 1Min Vol": round(rel_1m, 2)
+        }
+    except:
+        return {"1Min Vol": None, "Avg 1Min Vol": None, "Rel 1Min Vol": None}
+
 def get_stock_data(ticker):
     try:
         stock = yf.Ticker(ticker)
@@ -70,6 +89,7 @@ def get_stock_data(ticker):
         day_change = ((current_price - prev_close) / prev_close) * 100
         
         premarket = get_premarket_data(ticker)
+        vol_1m = get_1min_volume(ticker)
         
         today_volume = hist['Volume'].iloc[-1]
         avg_volume_20 = hist['Volume'].tail(20).mean()
@@ -125,6 +145,9 @@ def get_stock_data(ticker):
             "Ticker": ticker,
             "Price": round(current_price, 2),
             "Day %": round(day_change, 2),
+            "1Min Vol": vol_1m["1Min Vol"],
+            "Avg 1Min Vol": vol_1m["Avg 1Min Vol"],
+            "Rel 1Min Vol": vol_1m["Rel 1Min Vol"],
             "Pre-Market Price": premarket["Pre-Market Price"],
             "Pre-Market %": premarket["Pre-Market %"],
             "Rel Volume": round(rel_volume, 2),
@@ -164,6 +187,9 @@ if analyze:
         df = pd.DataFrame(results)
         df = df.sort_values("Bounce Score", ascending=False).reset_index(drop=True)
         df["Rank"] = df.index + 1
+        
+        st.subheader("📊 1-Minute Volume")
+        st.dataframe(df[["Ticker", "1Min Vol", "Avg 1Min Vol", "Rel 1Min Vol"]], use_container_width=True)
         
         st.subheader("🌅 Pre-Market Snapshot")
         st.dataframe(df[["Ticker", "Price", "Pre-Market Price", "Pre-Market %"]], use_container_width=True)
