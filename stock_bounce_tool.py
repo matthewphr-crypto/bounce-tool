@@ -9,7 +9,6 @@ st.set_page_config(page_title="Daily Stock Bounce Comparator", layout="wide")
 st.title("📈 Daily Stock Bounce Comparator")
 st.caption("Pre-Market • Relative Volume • Bounce Score • RSI • Support/Resistance • Pivot Points • Volume Levels • Moving Averages")
 
-# Sidebar
 st.sidebar.header("Settings")
 tickers_input = st.sidebar.text_input(
     "Enter tickers (comma separated)",
@@ -151,7 +150,7 @@ def get_stock_data(ticker):
         return None
 
 if analyze:
-    with st.spinner("Fetching data (including pre-market)..."):
+    with st.spinner("Fetching data..."):
         results = []
         for ticker in tickers:
             data = get_stock_data(ticker)
@@ -166,87 +165,23 @@ if analyze:
         df = df.sort_values("Bounce Score", ascending=False).reset_index(drop=True)
         df["Rank"] = df.index + 1
         
-        # Pre-Market
         st.subheader("🌅 Pre-Market Snapshot")
-        pre_cols = ["Ticker", "Price", "Pre-Market Price", "Pre-Market %"]
-        st.dataframe(
-            df[pre_cols].style.format({
-                "Price": "{:.2f}",
-                "Pre-Market Price": "{:.2f}",
-                "Pre-Market %": "{:.2f}%"
-            }, na_rep="—"),
-            use_container_width=True
-        )
+        st.dataframe(df[["Ticker", "Price", "Pre-Market Price", "Pre-Market %"]], use_container_width=True)
         
-        # Main Comparison
         st.subheader("📊 Main Comparison")
-        main_cols = ["Rank", "Ticker", "Price", "Day %", "Rel Volume", "5D %", "RSI", "Volatility %", "Oversold", "Bounce Score"]
-        st.dataframe(
-            df[main_cols].style.format({
-                "Price": "{:.2f}",
-                "Day %": "{:.2f}%",
-                "Rel Volume": "{:.2f}x",
-                "5D %": "{:.2f}%",
-                "RSI": "{:.1f}",
-                "Volatility %": "{:.1f}%",
-                "Oversold": "{:.1f}",
-                "Bounce Score": "{:.1f}"
-            }).background_gradient(subset=["Bounce Score"], cmap="RdYlGn"),
-            use_container_width=True
-        )
+        st.dataframe(df[["Rank", "Ticker", "Price", "Day %", "Rel Volume", "5D %", "RSI", "Volatility %", "Oversold", "Bounce Score"]], use_container_width=True)
         
         winner = df.iloc[0]
         st.success(f"**Best Bounce Candidate: {winner['Ticker']}**  |  Bounce Score: {winner['Bounce Score']}")
         
-        # Support / Resistance + Pivots
         st.subheader("📍 Support, Resistance & Pivot Points")
-        sr_cols = ["Ticker", "Price", "Support", "S1", "Pivot", "R1", "Resistance"]
-        st.dataframe(
-            df[sr_cols].style.format({
-                "Price": "{:.2f}",
-                "Support": "{:.2f}",
-                "S1": "{:.2f}",
-                "Pivot": "{:.2f}",
-                "R1": "{:.2f}",
-                "Resistance": "{:.2f}"
-            }),
-            use_container_width=True
-        )
+        st.dataframe(df[["Ticker", "Price", "Support", "S1", "Pivot", "R1", "Resistance"]], use_container_width=True)
         
-        # Volume Levels
         st.subheader("📊 Volume-Based Key Levels")
-        vol_cols = ["Ticker", "Price", "High Vol Level", "VWAP (10D)"]
-        st.dataframe(
-            df[vol_cols].style.format({
-                "Price": "{:.2f}",
-                "High Vol Level": "{:.2f}",
-                "VWAP (10D)": "{:.2f}"
-            }),
-            use_container_width=True
-        )
+        st.dataframe(df[["Ticker", "Price", "High Vol Level", "VWAP (10D)"]], use_container_width=True)
         
-        # Moving Averages
         st.subheader("📈 Moving Averages")
-        ma_cols = ["Ticker", "Price", "SMA 20", "Dist SMA20 %", "SMA 50", "Dist SMA50 %"]
-        st.dataframe(
-            df[ma_cols].style.format({
-                "Price": "{:.2f}",
-                "SMA 20": "{:.2f}",
-                "Dist SMA20 %": "{:.2f}%",
-                "SMA 50": "{:.2f}",
-                "Dist SMA50 %": "{:.2f}%"
-            }),
-            use_container_width=True
-        )
-        
-        st.markdown("---")
-        st.markdown("### Quick Guide")
-        st.markdown("""
-        - **RSI < 30** → Oversold
-        - **Pre-Market %** → Early session direction
-        - **SMA 20 / SMA 50** → Dynamic support/resistance
-        - **S1 / Pivot / R1** → Classic pivot points
-        """)
+        st.dataframe(df[["Ticker", "Price", "SMA 20", "Dist SMA20 %", "SMA 50", "Dist SMA50 %"]], use_container_width=True)
         
         st.caption(f"Data as of {datetime.now().strftime('%Y-%m-%d %H:%M')} | Powered by yfinance")
 
