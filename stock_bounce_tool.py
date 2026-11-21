@@ -213,10 +213,15 @@ if analyze:
         df["Rank"] = df.index + 1
         
         st.subheader("📰 News & Fundamentals")
-        st.dataframe(
-            df[["Ticker", "Yahoo News", "Google News", "Earnings Date", "Short Interest %", "Put/Call Ratio", "Sector"]],
-            use_container_width=True
-        )
+        for _, row in df.iterrows():
+            cols = st.columns([1, 3, 2, 1.5, 1.2, 1.2, 1.2])
+            cols[0].write(f"**{row['Ticker']}**")
+            cols[1].write(row['Yahoo News'])
+            cols[2].markdown(f"[Google News]({row['Google News']})")
+            cols[3].write(row['Earnings Date'])
+            cols[4].write(row['Short Interest %'])
+            cols[5].write(row['Put/Call Ratio'])
+            cols[6].write(row['Sector'])
         st.caption("**Short Interest %** = % of shares sold short | **Put/Call Ratio** > 1 = more puts (bearish sentiment)")
         
         st.subheader("📊 1-Minute Volume")
