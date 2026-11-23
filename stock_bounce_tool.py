@@ -38,8 +38,6 @@ def calculate_rsi(series, period=14):
 def get_premarket_data(ticker):
     try:
         info = yf.Ticker(ticker).info
-        
-        # Prefer the direct percentage if available
         pre_change_pct = info.get("preMarketChangePercent")
         pre_price = info.get("preMarketPrice")
         
@@ -49,7 +47,6 @@ def get_premarket_data(ticker):
                 "Pre-Market %": round(pre_change_pct, 2)
             }
         
-        # Fallback calculation
         regular_price = info.get("regularMarketPreviousClose") or info.get("previousClose")
         if pre_price and regular_price and regular_price != 0:
             change_pct = ((pre_price - regular_price) / regular_price) * 100
@@ -65,27 +62,46 @@ def get_1min_volume(ticker):
     try:
         hist_1m = yf.Ticker(ticker).history(period="1d", interval="1m")
         if hist_1m.empty:
-            return {"1Min Vol": None, "Avg 1Min Vol": None, "Rel 1Min Vol": None}
+            return {"1Min Vol": None, "Rel 1Min Vol": None}
         latest = hist_1m['Volume'].iloc[-1]
         avg = hist_1m['Volume'].mean()
         return {
             "1Min Vol": int(latest),
-            "Avg 1Min Vol": int(avg),
             "Rel 1Min Vol": round(latest / avg, 2) if avg > 0 else 0
         }
     except:
-        return {"1Min Vol": None, "Avg 1Min Vol": None, "Rel 1Min Vol": None}
+        return {"1Min Vol": None, "Rel 1Min Vol": None}
+
+def get_5min_levels(ticker):
+    """Get Support/Resistance from recent 5-minute data"""
+    try:
+        # Last 5 days of 5-minute data
+        hist_5m = yf.Ticker(ticker).history(period="5d", interval="5m")
+        if hist_5m.empty or len(hist_5m) < 10:
+            return {"Support (5m)": None, "Resistance (5m)": None}
+        
+        # Recent support/resistance from last ~2 sessions of 5m bars
+        recent = hist_5m.tail(100)  # last ~100 five-minute bars
+        support = recent['Low'].min()
+        resistance = recent['High'].max()
+        
+        return {
+            "Support (5m)": round(support, 2),
+            "Resistance (5m)": round(resistance, 2)
+        }
+    except:
+        return {"Support (5m)": None, "Resistance (5m)": None}
 
 def get_extra_data(ticker):
     try:
         stock = yf.Ticker(ticker)
-        info = stock.info
+        info = stock.info or {}
         
         yahoo_news = "No recent news"
         try:
-            news = stock.news[:2] if hasattr(stock, 'news') and stock.news else []
+            news = getattr(stock, 'news', []) or []
             if news:
-                titles = [n.get('title', '')[:60] for n in news if n.get('title')]
+                titles = [n.get('title', '')[:55] for n in news[:2] if n.get('title')]
                 if titles:
                     yahoo_news = " | ".join(titles)
         except:
@@ -94,20 +110,31 @@ def get_extra_data(ticker):
         news_link = f"https://www.google.com/search?q={ticker}+stock+news&tbm=nws"
         
         earnings = info.get("earningsTimestamp") or info.get("earningsDate")
-        earnings_date = datetime.fromtimestamp(earnings).strftime("%Y-%m-%d") if earnings else "N/A"
+        earnings_date = "N/A"
+        if earnings:
+            try:
+                if isinstance(earnings, (int, float)):
+                    earnings_date = datetime.fromtimestamp(earnings).strftime("%Y-%m-%d")
+                elif isinstance(earnings, list) and earnings:
+                    earnings_date = str(earnings[0])[:10]
+            except:
+                pass
         
         short_pct = info.get("shortPercentOfFloat")
         short_interest = f"{short_pct*100:.1f}%" if short_pct else "N/A"
         
+        pc_ratio = "N/A"
         try:
             options = stock.option_chain()
-            calls = options.calls['volume'].sum() if not options.calls.empty else 0
-            puts = options.puts['volume'].sum() if not options.puts.empty else 0
-            pc_ratio = round(puts / calls, 2) if calls > 0 else "N/A"
+            if options and not options.calls.empty and not options.puts.empty:
+                calls = options.calls['volume'].sum()
+                puts = options.puts['volume'].sum()
+                if calls > 0:
+                    pc_ratio = round(puts / calls, 2)
         except:
-            pc_ratio = "N/A"
+            pass
         
-        sector = info.get("sector", "N/A")
+        sector = info.get("sector") or "N/A"
         
         return {
             "Yahoo News": yahoo_news,
@@ -117,7 +144,7 @@ def get_extra_data(ticker):
             "Put/Call Ratio": pc_ratio,
             "Sector": sector
         }
-    except:
+    except Exception:
         return {
             "Yahoo News": "N/A",
             "Google News": f"https://www.google.com/search?q={ticker}+stock+news&tbm=nws",
@@ -131,7 +158,7 @@ def get_stock_data(ticker):
     try:
         stock = yf.Ticker(ticker)
         hist = stock.history(period="3mo")
-        if hist.empty or len(hist) < 50:
+        if hist.empty or len(hist) < 20:
             return None
         
         current_price = hist['Close'].iloc[-1]
@@ -140,15 +167,16 @@ def get_stock_data(ticker):
         
         premarket = get_premarket_data(ticker)
         vol_1m = get_1min_volume(ticker)
+        levels_5m = get_5min_levels(ticker)
         extra = get_extra_data(ticker)
         
         today_volume = hist['Volume'].iloc[-1]
         avg_volume_20 = hist['Volume'].tail(20).mean()
         rel_volume = today_volume / avg_volume_20 if avg_volume_20 > 0 else 0
         
-        five_day_change = ((current_price - hist['Close'].iloc[-6]) / hist['Close'].iloc[-6]) * 100
+        five_day_change = ((current_price - hist['Close'].iloc[-6]) / hist['Close'].iloc[-6]) * 100 if len(hist) > 5 else 0
         returns = hist['Close'].pct_change().dropna()
-        volatility = returns.tail(10).std() * np.sqrt(252) * 100
+        volatility = returns.tail(10).std() * np.sqrt(252) * 100 if len(returns) >= 10 else 0
         rsi = calculate_rsi(hist['Close'], period=14)
         
         high_20 = hist['High'].tail(20).max()
@@ -157,9 +185,7 @@ def get_stock_data(ticker):
         
         bounce_score = (rel_volume * 25) + (abs(min(day_change, 0)) * 4) + (oversold_score * 0.4) + (max(0, -five_day_change) * 1.5)
         
-        recent_support = hist['Low'].tail(10).min()
-        recent_resistance = hist['High'].tail(10).max()
-        
+        # Daily pivots (still useful)
         prev_high = hist['High'].iloc[-2]
         prev_low = hist['Low'].iloc[-2]
         prev_close_pp = hist['Close'].iloc[-2]
@@ -167,13 +193,14 @@ def get_stock_data(ticker):
         r1 = (2 * pivot) - prev_low
         s1 = (2 * pivot) - prev_high
         
+        # Volume levels
         recent_hist = hist.tail(15)
         high_vol_price = recent_hist.loc[recent_hist['Volume'].idxmax(), 'Close']
         recent_10 = hist.tail(10)
         vwap = (recent_10['Close'] * recent_10['Volume']).sum() / recent_10['Volume'].sum()
         
         sma_20 = hist['Close'].rolling(20).mean().iloc[-1]
-        sma_50 = hist['Close'].rolling(50).mean().iloc[-1]
+        sma_50 = hist['Close'].rolling(50).mean().iloc[-1] if len(hist) >= 50 else None
         
         return {
             "Ticker": ticker,
@@ -184,18 +211,18 @@ def get_stock_data(ticker):
             "Rel 1Min Vol": vol_1m["Rel 1Min Vol"],
             "Rel Volume": round(rel_volume, 2),
             "5D %": round(five_day_change, 2),
-            "RSI": round(rsi, 1),
+            "RSI": round(rsi, 1) if pd.notna(rsi) else None,
             "Volatility %": round(volatility, 1),
             "Bounce Score": round(bounce_score, 1),
-            "Support": round(recent_support, 2),
-            "Resistance": round(recent_resistance, 2),
+            "Support (5m)": levels_5m["Support (5m)"],
+            "Resistance (5m)": levels_5m["Resistance (5m)"],
             "Pivot": round(pivot, 2),
             "S1": round(s1, 2),
             "R1": round(r1, 2),
             "High Vol Level": round(high_vol_price, 2),
             "VWAP (10D)": round(vwap, 2),
-            "SMA 20": round(sma_20, 2),
-            "SMA 50": round(sma_50, 2),
+            "SMA 20": round(sma_20, 2) if pd.notna(sma_20) else None,
+            "SMA 50": round(sma_50, 2) if sma_50 and pd.notna(sma_50) else None,
             "Yahoo News": extra["Yahoo News"],
             "Google News": extra["Google News"],
             "Earnings Date": extra["Earnings Date"],
@@ -228,11 +255,9 @@ if analyze:
             },
             use_container_width=True
         )
-        st.caption("**Short Interest %** = % of shares sold short | **Put/Call Ratio** > 1 = more puts (bearish sentiment)")
         
         st.subheader("📊 1-Minute Volume")
         st.dataframe(df[["Ticker", "1Min Vol", "Rel 1Min Vol"]], use_container_width=True)
-        st.caption("**Rel 1Min Vol** = Latest 1-min volume ÷ average 1-min volume")
         
         st.subheader("📊 Main Comparison")
         st.dataframe(df[["Rank", "Ticker", "Price", "Day %", "Pre-Market %", "Rel Volume", "5D %", "RSI", "Volatility %", "Bounce Score"]], use_container_width=True)
@@ -240,8 +265,9 @@ if analyze:
         winner = df.iloc[0]
         st.success(f"**Best Bounce Candidate: {winner['Ticker']}** | Bounce Score: {winner['Bounce Score']}")
         
-        st.subheader("📍 Support / Resistance / Pivots")
-        st.dataframe(df[["Ticker", "Price", "Support", "S1", "Pivot", "R1", "Resistance"]], use_container_width=True)
+        st.subheader("📍 Support / Resistance (5-minute data)")
+        st.dataframe(df[["Ticker", "Price", "Support (5m)", "Resistance (5m)", "S1", "Pivot", "R1"]], use_container_width=True)
+        st.caption("Support (5m) / Resistance (5m) = lowest low / highest high from recent 5-minute bars (last ~2 sessions).")
         
         st.subheader("📈 Moving Averages & Volume Levels")
         st.dataframe(df[["Ticker", "Price", "SMA 20", "SMA 50", "High Vol Level", "VWAP (10D)"]], use_container_width=True)
