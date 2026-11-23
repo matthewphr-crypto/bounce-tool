@@ -38,11 +38,25 @@ def calculate_rsi(series, period=14):
 def get_premarket_data(ticker):
     try:
         info = yf.Ticker(ticker).info
+        
+        # Prefer the direct percentage if available
+        pre_change_pct = info.get("preMarketChangePercent")
         pre_price = info.get("preMarketPrice")
+        
+        if pre_change_pct is not None:
+            return {
+                "Pre-Market Price": round(pre_price, 2) if pre_price else None,
+                "Pre-Market %": round(pre_change_pct, 2)
+            }
+        
+        # Fallback calculation
         regular_price = info.get("regularMarketPreviousClose") or info.get("previousClose")
-        if pre_price and regular_price:
+        if pre_price and regular_price and regular_price != 0:
             change_pct = ((pre_price - regular_price) / regular_price) * 100
-            return {"Pre-Market Price": round(pre_price, 2), "Pre-Market %": round(change_pct, 2)}
+            return {
+                "Pre-Market Price": round(pre_price, 2),
+                "Pre-Market %": round(change_pct, 2)
+            }
     except:
         pass
     return {"Pre-Market Price": None, "Pre-Market %": None}
