@@ -7,7 +7,7 @@ from datetime import datetime
 st.set_page_config(page_title="Daily Stock Bounce Comparator", layout="wide")
 
 st.title("📈 Daily Stock Bounce Comparator")
-st.caption("Yahoo News • Google News • Earnings • Short Interest • Options • Sector • 1-Min Volume • Technicals")
+st.caption("Yahoo News • Google News • Earnings • Short Interest • Options • Sector • 1-Min Volume • Pre-Market • Technicals")
 
 st.sidebar.header("Settings")
 tickers_input = st.sidebar.text_input(
@@ -67,7 +67,6 @@ def get_extra_data(ticker):
         stock = yf.Ticker(ticker)
         info = stock.info
         
-        # Yahoo News
         yahoo_news = "No recent news"
         try:
             news = stock.news[:2] if hasattr(stock, 'news') and stock.news else []
@@ -78,18 +77,14 @@ def get_extra_data(ticker):
         except:
             pass
         
-        # Google News link
         news_link = f"https://www.google.com/search?q={ticker}+stock+news&tbm=nws"
         
-        # Earnings
         earnings = info.get("earningsTimestamp") or info.get("earningsDate")
         earnings_date = datetime.fromtimestamp(earnings).strftime("%Y-%m-%d") if earnings else "N/A"
         
-        # Short interest
         short_pct = info.get("shortPercentOfFloat")
         short_interest = f"{short_pct*100:.1f}%" if short_pct else "N/A"
         
-        # Options / Put-Call
         try:
             options = stock.option_chain()
             calls = options.calls['volume'].sum() if not options.calls.empty else 0
@@ -98,7 +93,6 @@ def get_extra_data(ticker):
         except:
             pc_ratio = "N/A"
         
-        # Sector
         sector = info.get("sector", "N/A")
         
         return {
@@ -171,9 +165,9 @@ def get_stock_data(ticker):
             "Ticker": ticker,
             "Price": round(current_price, 2),
             "Day %": round(day_change, 2),
+            "Pre-Market %": premarket["Pre-Market %"],
             "1Min Vol": vol_1m["1Min Vol"],
             "Rel 1Min Vol": vol_1m["Rel 1Min Vol"],
-            "Pre-Market %": premarket["Pre-Market %"],
             "Rel Volume": round(rel_volume, 2),
             "5D %": round(five_day_change, 2),
             "RSI": round(rsi, 1),
@@ -227,7 +221,7 @@ if analyze:
         st.caption("**Rel 1Min Vol** = Latest 1-min volume ÷ average 1-min volume")
         
         st.subheader("📊 Main Comparison")
-        st.dataframe(df[["Rank", "Ticker", "Price", "Day %", "Rel Volume", "5D %", "RSI", "Volatility %", "Bounce Score"]], use_container_width=True)
+        st.dataframe(df[["Rank", "Ticker", "Price", "Day %", "Pre-Market %", "Rel Volume", "5D %", "RSI", "Volatility %", "Bounce Score"]], use_container_width=True)
         
         winner = df.iloc[0]
         st.success(f"**Best Bounce Candidate: {winner['Ticker']}** | Bounce Score: {winner['Bounce Score']}")
