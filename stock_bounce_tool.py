@@ -3,15 +3,11 @@ import yfinance as yf
 import pandas as pd
 import numpy as np
 from datetime import datetime
-import requests
 
 st.set_page_config(page_title="Daily Stock Bounce Comparator", layout="wide")
 
 st.title("📈 Daily Stock Bounce Comparator")
 st.caption("Yahoo News • Google News • Earnings • Short Interest • Options • Sector • 1-Min Volume • Pre-Market • Technicals")
-
-# Your Finnhub API key
-FINNHUB_API_KEY = "dc248t9r01qjj5fh7tpgdc248t9r01qjj5fh7tq0"
 
 st.sidebar.header("Settings")
 tickers_input = st.sidebar.text_input(
@@ -41,36 +37,28 @@ def calculate_rsi(series, period=14):
 
 def get_premarket_data(ticker):
     try:
-        # Use Finnhub for pre-market quote
-        url = f"https://finnhub.io/api/v1/quote?symbol={ticker}&token={FINNHUB_API_KEY}"
-        response = requests.get(url, timeout=10)
-        data = response.json()
-        
-        current = data.get("c")  # current price
-        prev_close = data.get("pc")  # previous close
-        
-        if current and prev_close and prev_close != 0:
-            change_pct = ((current - prev_close) / prev_close) * 100
-            return {
-                "Pre-Market Price": round(current, 2),
-                "Pre-Market %": round(change_pct, 2)
-            }
-    except:
-        pass
-    
-    # Fallback to yfinance if Finnhub fails
-    try:
         info = yf.Ticker(ticker).info
+        
+        # Prefer the direct percentage if available
         pre_change_pct = info.get("preMarketChangePercent")
         pre_price = info.get("preMarketPrice")
+        
         if pre_change_pct is not None:
             return {
                 "Pre-Market Price": round(pre_price, 2) if pre_price else None,
                 "Pre-Market %": round(pre_change_pct, 2)
             }
+        
+        # Fallback calculation
+        regular_price = info.get("regularMarketPreviousClose") or info.get("previousClose")
+        if pre_price and regular_price and regular_price != 0:
+            change_pct = ((pre_price - regular_price) / regular_price) * 100
+            return {
+                "Pre-Market Price": round(pre_price, 2),
+                "Pre-Market %": round(change_pct, 2)
+            }
     except:
         pass
-    
     return {"Pre-Market Price": None, "Pre-Market %": None}
 
 def get_1min_volume(ticker):
@@ -258,7 +246,7 @@ if analyze:
         st.subheader("📈 Moving Averages & Volume Levels")
         st.dataframe(df[["Ticker", "Price", "SMA 20", "SMA 50", "High Vol Level", "VWAP (10D)"]], use_container_width=True)
         
-        st.caption(f"Data as of {datetime.now().strftime('%Y-%m-%d %H:%M')} | Powered by yfinance + Finnhub")
+        st.caption(f"Data as of {datetime.now().strftime('%Y-%m-%d %H:%M')} | Powered by yfinance")
 
 else:
     st.info("Enter tickers on the left and click **Analyze Stocks**")
