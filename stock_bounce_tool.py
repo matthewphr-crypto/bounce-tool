@@ -93,7 +93,6 @@ def get_stock_data(ticker):
             (max(0, -five_day_change) * 1.5)
         )
 
-        # Daily pivots
         prev_high = hist['High'].iloc[-2]
         prev_low = hist['Low'].iloc[-2]
         prev_close_pp = hist['Close'].iloc[-2]
@@ -101,7 +100,6 @@ def get_stock_data(ticker):
         r1 = (2 * pivot) - prev_low
         s1 = (2 * pivot) - prev_high
 
-        # Volume levels
         recent_hist = hist.tail(15)
         high_vol_price = recent_hist.loc[recent_hist['Volume'].idxmax(), 'Close']
         recent_10 = hist.tail(10)
@@ -173,8 +171,4 @@ if analyze:
         st.caption(f"Data as of {datetime.now().strftime('%Y-%m-%d %H:%M')} | Source: yfinance market data")
 
 else:
-    st.info("Enter tickers on the left and click **Analyze**")What changed
-Removed all fundamentals, news, short interest, put/call, earnings, and sector data (the parts that were failing).
-Everything now comes from price and volume history only.
-Still includes: relative volume, 1-min volume, RSI, bounce score, 5-min support/resistance, pivots, SMAs, and volume levels.
-Update the file on GitHub and redeploy. It should run more reliably now.
+    st.info("Enter tickers on the left and click Analyze")
