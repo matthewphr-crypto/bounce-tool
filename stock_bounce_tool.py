@@ -7,7 +7,7 @@ from datetime import datetime
 st.set_page_config(page_title="Intraday Stock Comparator", layout="wide")
 
 st.title("📈 Intraday Stock Comparator")
-st.caption("Market data + News & Fundamentals")
+st.caption("Market data + live fundamentals (when available)")
 
 st.sidebar.header("Settings")
 tickers_input = st.sidebar.text_input(
@@ -63,7 +63,7 @@ def get_5min_levels(ticker):
         return {"Support (5m)": None, "Resistance (5m)": None}
 
 def get_fundamentals(ticker):
-    """Try to get news and fundamentals. Returns N/A when data is missing."""
+    """Pull live fundamentals. Shows N/A only when the source has no data."""
     result = {
         "Yahoo News": "N/A",
         "Google News": f"https://www.google.com/search?q={ticker}+stock+news&tbm=nws",
@@ -97,7 +97,7 @@ def get_fundamentals(ticker):
             except:
                 pass
 
-        # Short interest
+        # Short interest (live attempt)
         short_pct = info.get("shortPercentOfFloat")
         if short_pct is not None:
             result["Short Interest %"] = f"{short_pct * 100:.1f}%"
@@ -221,7 +221,7 @@ if analyze:
             },
             use_container_width=True
         )
-        st.caption("Google News links always work. Other fields show N/A when Yahoo has no data.")
+        st.caption("Short Interest and other fundamentals are pulled live. They show N/A when the source has no current data.")
 
         st.subheader("📊 Main Comparison")
         st.dataframe(
